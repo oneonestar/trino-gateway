@@ -26,7 +26,6 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import org.eclipse.jetty.http.HttpStatus;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -148,9 +147,9 @@ public class ClusterStatsHttpMonitor
 
         try (Response res = call.execute()) {
             switch (res.code()) {
-                case HttpStatus.OK_200:
+                case 200:
                     return res.body().string();
-                case HttpStatus.UNAUTHORIZED_401:
+                case 401:
                     log.info("Unauthorized to fetch cluster stats");
                     log.debug("username: %s, targetUrl: %s, cookieStore: %s",
                             username,
