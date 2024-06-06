@@ -62,7 +62,7 @@ public final class ProxyUtils
         QueryHistoryManager.QueryDetail queryDetail = new QueryHistoryManager.QueryDetail();
         queryDetail.setBackendUrl(request.getHeader(PROXY_TARGET_HEADER));
         queryDetail.setCaptureTime(System.currentTimeMillis());
-        queryDetail.setUser(getQueryUser(request));
+        queryDetail.setUser(getQueryUser(request.getHeader(USER_HEADER), request.getHeader(AUTHORIZATION)));
         queryDetail.setSource(request.getHeader(SOURCE_HEADER));
         String queryText = CharStreams.toString(request.getReader());
         queryDetail.setQueryText(
@@ -72,30 +72,28 @@ public final class ProxyUtils
         return queryDetail;
     }
 
-    public static String getQueryUser(HttpServletRequest request)
+    public static String getQueryUser(String userHeader, String authorization)
     {
-        String trinoUser = request.getHeader(USER_HEADER);
-
-        if (!isNullOrEmpty(trinoUser)) {
+        if (!isNullOrEmpty(userHeader)) {
             log.info("user from %s", USER_HEADER);
-            return trinoUser;
+            return userHeader;
         }
 
         log.info("user from basic auth");
         String user = "";
-        String header = request.getHeader(AUTHORIZATION);
-        if (header == null) {
+        String authHeader = authorization;
+        if (authHeader == null) {
             log.error("didn't find any basic auth header");
             return user;
         }
 
-        int space = header.indexOf(' ');
-        if ((space < 0) || !header.substring(0, space).equalsIgnoreCase("basic")) {
+        int space = authHeader.indexOf(' ');
+        if ((space < 0) || !authHeader.substring(0, space).equalsIgnoreCase("basic")) {
             log.error("basic auth format is incorrect");
             return user;
         }
 
-        String headerInfo = header.substring(space + 1).trim();
+        String headerInfo = authHeader.substring(space + 1).trim();
         if (isNullOrEmpty(headerInfo)) {
             log.error("The encoded value of basic auth doesn't exist");
             return user;

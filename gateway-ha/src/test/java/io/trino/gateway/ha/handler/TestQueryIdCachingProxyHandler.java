@@ -25,6 +25,7 @@ import java.io.IOException;
 
 import static io.trino.gateway.ha.handler.ProxyUtils.extractQueryIdIfPresent;
 import static io.trino.gateway.ha.handler.ProxyUtils.getQueryUser;
+import static io.trino.gateway.ha.handler.QueryIdCachingProxyHandler.USER_HEADER;
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -87,11 +88,11 @@ public class TestQueryIdCachingProxyHandler
         String authHeader = "Basic dGVzdDoxMjPCow==";
         Mockito.when(req.getHeader(QueryIdCachingProxyHandler.AUTHORIZATION))
                 .thenReturn(authHeader);
-        assertThat(getQueryUser(req)).isEqualTo("test");
+        assertThat(getQueryUser(req.getHeader(USER_HEADER), req.getHeader(QueryIdCachingProxyHandler.AUTHORIZATION))).isEqualTo("test");
 
         String user = "trino_user";
         Mockito.when(req.getHeader(QueryIdCachingProxyHandler.USER_HEADER))
                 .thenReturn(user);
-        assertThat(getQueryUser(req)).isEqualTo(user);
+        assertThat(getQueryUser(req.getHeader(USER_HEADER), req.getHeader(QueryIdCachingProxyHandler.AUTHORIZATION))).isEqualTo(user);
     }
 }
