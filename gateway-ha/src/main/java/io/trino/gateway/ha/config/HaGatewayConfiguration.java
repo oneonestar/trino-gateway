@@ -25,6 +25,7 @@ public class HaGatewayConfiguration
     private DataStoreConfiguration dataStore;
     private MonitorConfiguration monitor = new MonitorConfiguration();
     private RoutingRulesConfiguration routingRules = new RoutingRulesConfiguration();
+    private RoutingStrategy routingStrategy;
     private AuthenticationConfiguration authentication;
     private AuthorizationConfiguration authorization;
     private Map<String, UserConfiguration> presetUsers = new HashMap<>();
@@ -91,6 +92,16 @@ public class HaGatewayConfiguration
     public void setRoutingRules(RoutingRulesConfiguration routingRules)
     {
         this.routingRules = routingRules;
+    }
+
+    public RoutingStrategy getRoutingStrategy()
+    {
+        return routingStrategy;
+    }
+
+    public void setRoutingStrategy(RoutingStrategy routingStrategy)
+    {
+        this.routingStrategy = routingStrategy;
     }
 
     public AuthenticationConfiguration getAuthentication()

@@ -14,6 +14,7 @@
 package io.trino.gateway.ha.router;
 
 import com.google.common.base.Strings;
+import com.google.inject.Inject;
 import io.airlift.log.Logger;
 
 public class StochasticRoutingManager
@@ -22,8 +23,10 @@ public class StochasticRoutingManager
     private static final Logger log = Logger.get(StochasticRoutingManager.class);
     QueryHistoryManager queryHistoryManager;
 
+    @Inject
     public StochasticRoutingManager(
-            GatewayBackendManager gatewayBackendManager, QueryHistoryManager queryHistoryManager)
+            GatewayBackendManager gatewayBackendManager,
+            QueryHistoryManager queryHistoryManager)
     {
         super(gatewayBackendManager);
         this.queryHistoryManager = queryHistoryManager;

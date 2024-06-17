@@ -13,8 +13,10 @@
  */
 package io.trino.gateway.ha.persistence;
 
+import com.google.inject.Inject;
 import io.airlift.log.Logger;
 import io.trino.gateway.ha.config.DataStoreConfiguration;
+import io.trino.gateway.ha.config.HaGatewayConfiguration;
 import io.trino.gateway.ha.persistence.dao.QueryHistoryDao;
 import jakarta.annotation.Nullable;
 import org.jdbi.v3.core.Jdbi;
@@ -34,6 +36,12 @@ public class JdbcConnectionManager
     private final DataStoreConfiguration configuration;
     private final ScheduledExecutorService executorService =
             Executors.newSingleThreadScheduledExecutor();
+
+    @Inject
+    public JdbcConnectionManager(Jdbi jdbi, HaGatewayConfiguration haGatewayConfiguration)
+    {
+        this(jdbi, haGatewayConfiguration.getDataStore());
+    }
 
     public JdbcConnectionManager(Jdbi jdbi, DataStoreConfiguration configuration)
     {

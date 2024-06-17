@@ -13,15 +13,15 @@
  */
 package io.trino.gateway.baseapp;
 
-import com.google.common.collect.MoreCollectors;
 import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
 import io.airlift.log.Logger;
 import io.trino.gateway.ha.config.HaGatewayConfiguration;
+import io.trino.gateway.ha.config.RoutingStrategy;
 import io.trino.gateway.ha.handler.ProxyHandlerStats;
-import io.trino.gateway.ha.module.RouterBaseModule;
-import io.trino.gateway.ha.module.StochasticRoutingManagerProvider;
+import io.trino.gateway.ha.persistence.JdbcConnectionManager;
+import io.trino.gateway.ha.persistence.RecordAndAnnotatedConstructorMapper;
 import io.trino.gateway.ha.resource.EntityEditorResource;
 import io.trino.gateway.ha.resource.GatewayResource;
 import io.trino.gateway.ha.resource.GatewayViewResource;
@@ -30,17 +30,27 @@ import io.trino.gateway.ha.resource.HaGatewayResource;
 import io.trino.gateway.ha.resource.LoginResource;
 import io.trino.gateway.ha.resource.PublicResource;
 import io.trino.gateway.ha.resource.TrinoResource;
+import io.trino.gateway.ha.router.GatewayBackendManager;
+import io.trino.gateway.ha.router.HaGatewayManager;
+import io.trino.gateway.ha.router.HaQueryHistoryManager;
+import io.trino.gateway.ha.router.HaResourceGroupsManager;
+import io.trino.gateway.ha.router.QueryCountBasedRouter;
+import io.trino.gateway.ha.router.QueryHistoryManager;
+import io.trino.gateway.ha.router.ResourceGroupsManager;
+import io.trino.gateway.ha.router.RoutingManager;
+import io.trino.gateway.ha.router.StochasticRoutingManager;
 import io.trino.gateway.ha.security.AuthorizedExceptionMapper;
 import io.trino.gateway.proxyserver.ForProxy;
 import io.trino.gateway.proxyserver.ProxyRequestHandler;
 import io.trino.gateway.proxyserver.RouteToBackendResource;
 import io.trino.gateway.proxyserver.RouterPreMatchContainerRequestFilter;
 import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import static io.airlift.http.client.HttpClientBinder.httpClientBinder;
 import static io.airlift.jaxrs.JaxrsBinder.jaxrsBinder;
@@ -83,18 +93,6 @@ public class BaseApp
         return null;
     }
 
-    private static void validateModules(List<Module> modules, HaGatewayConfiguration configuration)
-    {
-        Optional<Module> routerProvider = modules.stream()
-                .filter(module -> module instanceof RouterBaseModule)
-                .collect(MoreCollectors.toOptional());
-        if (routerProvider.isEmpty()) {
-            logger.warn("Router provider doesn't exist in the config, using the StochasticRoutingManagerProvider");
-            String clazz = StochasticRoutingManagerProvider.class.getCanonicalName();
-            modules.add(newModule(clazz, configuration));
-        }
-    }
-
     public static List<Module> addModules(HaGatewayConfiguration configuration)
     {
         List<Module> modules = new ArrayList<>();
@@ -106,8 +104,6 @@ public class BaseApp
             modules.add(newModule(clazz, configuration));
         }
 
-        validateModules(modules, configuration);
-
         return modules;
     }
 
@@ -118,6 +114,7 @@ public class BaseApp
         registerAuthFilters(binder);
         registerResources(binder);
         registerProxyResources(binder);
+        registerRoutingModule(haGatewayConfiguration, binder);
         addManagedApps(this.haGatewayConfiguration, binder);
         jaxrsBinder(binder).bind(AuthorizedExceptionMapper.class);
         binder.bind(ProxyHandlerStats.class).in(Scopes.SINGLETON);
@@ -166,5 +163,32 @@ public class BaseApp
         jaxrsBinder(binder).bind(RouterPreMatchContainerRequestFilter.class);
         jaxrsBinder(binder).bind(ProxyRequestHandler.class);
         httpClientBinder(binder).bindHttpClient("proxy", ForProxy.class);
+    }
+
+    private static void registerRoutingModule(HaGatewayConfiguration configuration, Binder binder)
+    {
+        Jdbi jdbi = Jdbi.create(
+                configuration.getDataStore().getJdbcUrl(),
+                configuration.getDataStore().getUser(),
+                configuration.getDataStore().getPassword())
+                .installPlugin(new SqlObjectPlugin())
+                .registerRowMapper(new RecordAndAnnotatedConstructorMapper());
+        binder.bind(Jdbi.class).toInstance(jdbi);
+        binder.bind(JdbcConnectionManager.class).in(Scopes.SINGLETON);
+        binder.bind(QueryHistoryManager.class).to(HaQueryHistoryManager.class).in(Scopes.SINGLETON);
+        binder.bind(GatewayBackendManager.class).to(HaGatewayManager.class).in(Scopes.SINGLETON);
+        binder.bind(ResourceGroupsManager.class).to(HaResourceGroupsManager.class).in(Scopes.SINGLETON);
+        RoutingStrategy routingStrategy = configuration.getRoutingStrategy();
+        if (routingStrategy == null) {
+            binder.bind(RoutingManager.class).to(StochasticRoutingManager.class).in(Scopes.SINGLETON);
+        }
+        else {
+            switch (routingStrategy) {
+                case StochasticRouting ->
+                        binder.bind(RoutingManager.class).to(StochasticRoutingManager.class).in(Scopes.SINGLETON);
+                case QueryCountBasedRouting ->
+                        binder.bind(RoutingManager.class).to(QueryCountBasedRouter.class).in(Scopes.SINGLETON);
+            }
+        }
     }
 }
