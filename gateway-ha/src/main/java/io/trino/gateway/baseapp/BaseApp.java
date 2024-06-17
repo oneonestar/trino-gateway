@@ -17,7 +17,6 @@ import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
-import io.airlift.log.Logger;
 import io.trino.gateway.ha.clustermonitor.ActiveClusterMonitor;
 import io.trino.gateway.ha.clustermonitor.ClusterStatsHttpMonitor;
 import io.trino.gateway.ha.clustermonitor.ClusterStatsInfoApiMonitor;
@@ -60,63 +59,19 @@ import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 
-import java.lang.reflect.Constructor;
-import java.util.ArrayList;
-import java.util.List;
-
 import static io.airlift.http.client.HttpClientBinder.httpClientBinder;
 import static io.airlift.jaxrs.JaxrsBinder.jaxrsBinder;
-import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.weakref.jmx.guice.ExportBinder.newExporter;
 
 public class BaseApp
         implements Module
 {
-    private static final Logger logger = Logger.get(BaseApp.class);
     private final HaGatewayConfiguration haGatewayConfiguration;
 
     public BaseApp(HaGatewayConfiguration haGatewayConfiguration)
     {
         this.haGatewayConfiguration = requireNonNull(haGatewayConfiguration);
-    }
-
-    private static Module newModule(String clazz, HaGatewayConfiguration configuration)
-    {
-        try {
-            logger.info("Trying to load module [%s]", clazz);
-            // Modules must have exactly one constructor. The signature must be:
-            // public Module constructor(HaGatewayConfiguration)
-            Constructor<?>[] constructors = Class.forName(clazz).getConstructors();
-            if (constructors.length != 1) {
-                throw new RuntimeException(format("Failed to load module [%s]. Multiple constructors exist.", clazz));
-            }
-            Constructor<?> constructor = constructors[0];
-            if (constructor.getParameterCount() != 1) {
-                throw new RuntimeException(format("Failed to load module [%s]. Unsupported constructor.", clazz));
-            }
-            Object module = constructor.newInstance(configuration);
-            return ((Module) module);
-        }
-        catch (Exception e) {
-            logger.error(e, "Could not instantiate module [%s]", clazz);
-            System.exit(1);
-        }
-        return null;
-    }
-
-    public static List<Module> addModules(HaGatewayConfiguration configuration)
-    {
-        List<Module> modules = new ArrayList<>();
-        if (configuration.getModules() == null) {
-            logger.warn("No modules to load.");
-            return modules;
-        }
-        for (String clazz : configuration.getModules()) {
-            modules.add(newModule(clazz, configuration));
-        }
-
-        return modules;
     }
 
     @Override
@@ -128,28 +83,9 @@ public class BaseApp
         registerProxyResources(binder);
         registerRoutingModule(haGatewayConfiguration, binder);
         registerClusterStatsMonitorModule(haGatewayConfiguration, binder);
-        addManagedApps(this.haGatewayConfiguration, binder);
         jaxrsBinder(binder).bind(AuthorizedExceptionMapper.class);
         binder.bind(ProxyHandlerStats.class).in(Scopes.SINGLETON);
         newExporter(binder).export(ProxyHandlerStats.class).withGeneratedName();
-    }
-
-    private static void addManagedApps(HaGatewayConfiguration configuration, Binder binder)
-    {
-        if (configuration.getManagedApps() == null) {
-            logger.error("No managed apps found");
-            return;
-        }
-        configuration.getManagedApps().forEach(
-                clazz -> {
-                    try {
-                        Class c = Class.forName(clazz);
-                        binder.bind(c).in(Scopes.SINGLETON);
-                    }
-                    catch (Exception e) {
-                        logger.error(e, "Error loading managed app");
-                    }
-                });
     }
 
     private static void registerResources(Binder binder)

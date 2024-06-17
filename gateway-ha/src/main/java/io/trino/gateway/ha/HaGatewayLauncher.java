@@ -37,14 +37,13 @@ import org.weakref.jmx.guice.MBeanModule;
 import java.io.File;
 import java.util.List;
 
-import static io.trino.gateway.baseapp.BaseApp.addModules;
 import static java.lang.String.format;
 
 public class HaGatewayLauncher
 {
     private static final Logger logger = Logger.get(HaGatewayLauncher.class);
 
-    private void start(List<Module> additionalModules, HaGatewayConfiguration configuration)
+    private void start(HaGatewayConfiguration configuration)
     {
         long startTime = System.nanoTime();
 
@@ -61,7 +60,6 @@ public class HaGatewayLauncher
                 new JaxrsModule(),
                 new HaGatewayProviderModule(configuration),
                 new BaseApp(configuration));
-        modules.addAll(additionalModules);
 
         Bootstrap app = new Bootstrap(modules.build())
                 .setRequiredConfigurationProperties(configuration.getServerConfig());
@@ -106,7 +104,6 @@ public class HaGatewayLauncher
             throw new IllegalArgumentException("Expected exactly one argument (path of configuration file)");
         }
         HaGatewayConfiguration haGatewayConfiguration = objectMapper.readValue(new File(args[0]), HaGatewayConfiguration.class);
-        List<Module> modules = addModules(haGatewayConfiguration);
-        new HaGatewayLauncher().start(modules, haGatewayConfiguration);
+        new HaGatewayLauncher().start(haGatewayConfiguration);
     }
 }
