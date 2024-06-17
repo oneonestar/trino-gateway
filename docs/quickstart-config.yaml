@@ -14,7 +14,6 @@ clusterStatsConfiguration:
   monitorType: INFO_API
 
 modules:
-  - io.trino.gateway.ha.module.HaGatewayProviderModule
   - io.trino.gateway.ha.module.ClusterStateListenerModule
   - io.trino.gateway.ha.module.ClusterStatsMonitorModule
 

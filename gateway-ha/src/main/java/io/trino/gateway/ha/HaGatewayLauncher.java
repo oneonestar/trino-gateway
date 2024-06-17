@@ -31,6 +31,7 @@ import io.airlift.node.NodeModule;
 import io.airlift.units.Duration;
 import io.trino.gateway.baseapp.BaseApp;
 import io.trino.gateway.ha.config.HaGatewayConfiguration;
+import io.trino.gateway.ha.module.HaGatewayProviderModule;
 import org.weakref.jmx.guice.MBeanModule;
 
 import java.io.File;
@@ -58,6 +59,7 @@ public class HaGatewayLauncher
                 new MBeanModule(),
                 new JsonModule(),
                 new JaxrsModule(),
+                new HaGatewayProviderModule(configuration),
                 new BaseApp(configuration));
         modules.addAll(additionalModules);
 

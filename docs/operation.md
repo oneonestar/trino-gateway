@@ -44,7 +44,6 @@ to config file's modules section like below
 
 ```
 modules:
-  - io.trino.gateway.ha.module.HaGatewayProviderModule
   - io.trino.gateway.ha.module.ClusterStateListenerModule
   - io.trino.gateway.ha.module.ClusterStatsMonitorModule
 ```

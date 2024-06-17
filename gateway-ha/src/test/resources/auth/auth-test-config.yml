@@ -8,9 +8,6 @@ dataStore:
   password: sa
   driver: org.h2.Driver
 
-modules:
-  - io.trino.gateway.ha.module.HaGatewayProviderModule
-
 extraWhitelistPaths:
   - '/v1/custom.*'
 

@@ -21,7 +21,6 @@ monitor:
   taskDelaySeconds: 10
 
 modules:
-  - io.trino.gateway.ha.module.HaGatewayProviderModule
   - io.trino.gateway.ha.module.ClusterStateListenerModule
   - io.trino.gateway.ha.module.ClusterStatsMonitorModule
 
