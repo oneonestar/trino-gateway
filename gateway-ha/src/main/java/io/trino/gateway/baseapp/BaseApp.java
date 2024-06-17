@@ -16,8 +16,20 @@ package io.trino.gateway.baseapp;
 import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
+import com.google.inject.multibindings.Multibinder;
 import io.airlift.log.Logger;
+import io.trino.gateway.ha.clustermonitor.ActiveClusterMonitor;
+import io.trino.gateway.ha.clustermonitor.ClusterStatsHttpMonitor;
+import io.trino.gateway.ha.clustermonitor.ClusterStatsInfoApiMonitor;
+import io.trino.gateway.ha.clustermonitor.ClusterStatsJdbcMonitor;
+import io.trino.gateway.ha.clustermonitor.ClusterStatsMonitor;
+import io.trino.gateway.ha.clustermonitor.ClusterStatsObserver;
+import io.trino.gateway.ha.clustermonitor.HealthCheckObserver;
+import io.trino.gateway.ha.clustermonitor.NoopClusterStatsMonitor;
+import io.trino.gateway.ha.clustermonitor.TrinoClusterStatsObserver;
+import io.trino.gateway.ha.config.BackendStateConfiguration;
 import io.trino.gateway.ha.config.HaGatewayConfiguration;
+import io.trino.gateway.ha.config.MonitorConfiguration;
 import io.trino.gateway.ha.config.RoutingStrategy;
 import io.trino.gateway.ha.handler.ProxyHandlerStats;
 import io.trino.gateway.ha.persistence.JdbcConnectionManager;
@@ -115,6 +127,7 @@ public class BaseApp
         registerResources(binder);
         registerProxyResources(binder);
         registerRoutingModule(haGatewayConfiguration, binder);
+        registerClusterStatsMonitorModule(haGatewayConfiguration, binder);
         addManagedApps(this.haGatewayConfiguration, binder);
         jaxrsBinder(binder).bind(AuthorizedExceptionMapper.class);
         binder.bind(ProxyHandlerStats.class).in(Scopes.SINGLETON);
@@ -190,5 +203,42 @@ public class BaseApp
                         binder.bind(RoutingManager.class).to(QueryCountBasedRouter.class).in(Scopes.SINGLETON);
             }
         }
+    }
+
+    private static void registerClusterStatsMonitorModule(HaGatewayConfiguration config, Binder binder)
+    {
+        MonitorConfiguration monitorConfig = config.getMonitor();
+        if (monitorConfig == null) {
+            binder.bind(ClusterStatsMonitor.class).to(ClusterStatsInfoApiMonitor.class).in(Scopes.SINGLETON);
+            binder.bind(MonitorConfiguration.class).in(Scopes.SINGLETON);
+        }
+        else {
+            switch (monitorConfig.getMonitorType()) {
+                case INFO_API -> binder.bind(ClusterStatsMonitor.class).to(ClusterStatsInfoApiMonitor.class).in(Scopes.SINGLETON);
+                case NOOP -> binder.bind(ClusterStatsMonitor.class).to(NoopClusterStatsMonitor.class).in(Scopes.SINGLETON);
+                case UI_API -> {
+                    bindBackendStateConfiguration(config, binder);
+                    binder.bind(ClusterStatsMonitor.class).to(ClusterStatsHttpMonitor.class).in(Scopes.SINGLETON);
+                }
+                case JDBC -> {
+                    bindBackendStateConfiguration(config, binder);
+                    binder.bind(ClusterStatsMonitor.class).to(ClusterStatsJdbcMonitor.class).in(Scopes.SINGLETON);
+                }
+            }
+            binder.bind(MonitorConfiguration.class).toInstance(monitorConfig);
+        }
+        Multibinder<TrinoClusterStatsObserver> observerMultibinder = Multibinder.newSetBinder(binder, TrinoClusterStatsObserver.class);
+        observerMultibinder.addBinding().to(HealthCheckObserver.class);
+        observerMultibinder.addBinding().to(ClusterStatsObserver.class);
+        binder.bind(ActiveClusterMonitor.class).in(Scopes.SINGLETON);
+    }
+
+    private static void bindBackendStateConfiguration(HaGatewayConfiguration config, Binder binder)
+    {
+        BackendStateConfiguration backendState = config.getBackendState();
+        if (backendState == null) {
+            throw new RuntimeException("Backend state is required for UI_API/JDBC monitoring");
+        }
+        binder.bind(BackendStateConfiguration.class).toInstance(backendState);
     }
 }

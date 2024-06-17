@@ -31,7 +31,6 @@ public class HaGatewayConfiguration
     private Map<String, UserConfiguration> presetUsers = new HashMap<>();
     private Map<String, String> pagePermissions = new HashMap<>();
     private BackendStateConfiguration backendState;
-    private ClusterStatsConfiguration clusterStatsConfiguration;
     private List<String> extraWhitelistPaths = new ArrayList<>();
     private OAuth2GatewayCookieConfiguration oauth2GatewayCookieConfiguration = new OAuth2GatewayCookieConfiguration();
     private GatewayCookieConfiguration gatewayCookieConfiguration = new GatewayCookieConfiguration();
@@ -152,16 +151,6 @@ public class HaGatewayConfiguration
     public void setBackendState(BackendStateConfiguration backendState)
     {
         this.backendState = backendState;
-    }
-
-    public ClusterStatsConfiguration getClusterStatsConfiguration()
-    {
-        return this.clusterStatsConfiguration;
-    }
-
-    public void setClusterStatsConfiguration(ClusterStatsConfiguration clusterStatsConfiguration)
-    {
-        this.clusterStatsConfiguration = clusterStatsConfiguration;
     }
 
     public List<String> getExtraWhitelistPaths()

@@ -15,9 +15,12 @@ package io.trino.gateway.ha.config;
 
 import io.trino.gateway.ha.clustermonitor.ActiveClusterMonitor;
 
+import static io.trino.gateway.ha.config.ClusterStatsMonitorType.INFO_API;
+
 public class MonitorConfiguration
 {
     private int taskDelaySeconds = ActiveClusterMonitor.MONITOR_TASK_DELAY_SECONDS;
+    private ClusterStatsMonitorType monitorType = INFO_API;
 
     public MonitorConfiguration() {}
 
@@ -29,5 +32,15 @@ public class MonitorConfiguration
     public void setTaskDelaySeconds(int taskDelaySeconds)
     {
         this.taskDelaySeconds = taskDelaySeconds;
+    }
+
+    public ClusterStatsMonitorType getMonitorType()
+    {
+        return monitorType;
+    }
+
+    public void setMonitorType(ClusterStatsMonitorType monitorType)
+    {
+        this.monitorType = monitorType;
     }
 }

@@ -16,6 +16,7 @@ package io.trino.gateway.ha.clustermonitor;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
+import com.google.inject.Inject;
 import io.airlift.log.Logger;
 import io.trino.gateway.ha.config.BackendStateConfiguration;
 import io.trino.gateway.ha.config.ProxyBackendConfiguration;
@@ -45,6 +46,7 @@ public class ClusterStatsHttpMonitor
     private final String username;
     private final String password;
 
+    @Inject
     public ClusterStatsHttpMonitor(BackendStateConfiguration backendStateConfiguration)
     {
         username = backendStateConfiguration.getUsername();

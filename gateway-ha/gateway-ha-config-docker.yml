@@ -13,12 +13,5 @@ dataStore:
   driver: org.postgresql.Driver
   queryHistoryHoursRetention: 24
 
-clusterStatsConfiguration:
+monitor:
   monitorType: INFO_API
-
-modules:
-  - io.trino.gateway.ha.module.ClusterStateListenerModule
-  - io.trino.gateway.ha.module.ClusterStatsMonitorModule
-
-managedApps:
-  - io.trino.gateway.ha.clustermonitor.ActiveClusterMonitor

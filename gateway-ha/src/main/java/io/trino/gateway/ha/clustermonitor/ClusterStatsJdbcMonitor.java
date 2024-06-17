@@ -14,6 +14,7 @@
 package io.trino.gateway.ha.clustermonitor;
 
 import com.google.common.util.concurrent.SimpleTimeLimiter;
+import com.google.inject.Inject;
 import io.airlift.log.Logger;
 import io.trino.gateway.ha.config.BackendStateConfiguration;
 import io.trino.gateway.ha.config.ProxyBackendConfiguration;
@@ -43,6 +44,7 @@ public class ClusterStatsJdbcMonitor
             + "WHERE user != ? AND date_diff('hour',created,now()) <= 1 "
             + "GROUP BY state";
 
+    @Inject
     public ClusterStatsJdbcMonitor(BackendStateConfiguration backendStateConfiguration)
     {
         properties = new Properties();

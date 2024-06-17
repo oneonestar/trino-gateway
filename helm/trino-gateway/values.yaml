@@ -37,13 +37,8 @@ config:
     serverConfig:
         node.environment: test
         http-server.http.port: 8080
-    clusterStatsConfiguration:
+    monitor:
         monitorType: INFO_API
-    modules:
-        - io.trino.gateway.ha.module.ClusterStateListenerModule
-        - io.trino.gateway.ha.module.ClusterStatsMonitorModule
-    managedApps:
-        - io.trino.gateway.ha.clustermonitor.ActiveClusterMonitor
 
 service:
   type: ClusterIP

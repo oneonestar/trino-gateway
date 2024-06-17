@@ -43,9 +43,6 @@ then use `QueryCountBasedRouter`, it can be configured by adding the module name
 to config file's modules section like below
 
 ```
-modules:
-  - io.trino.gateway.ha.module.ClusterStateListenerModule
-  - io.trino.gateway.ha.module.ClusterStatsMonitorModule
 ```
 - The router works on the stats it receives from the clusters about the load i.e number queries queued and running on a cluster at regular intervals which can be configured like below. The default interval is 1 min
 ```
