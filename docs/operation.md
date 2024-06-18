@@ -36,16 +36,19 @@ documentation](https://trino.io/docs/current/admin/graceful-shutdown.html) for
 more details.
 
 ## Query routing options
-- The default router selects the backend randomly to route the queries. 
+- The default router selects the backend randomly to route the queries
+  (`StochasticRouting`).
 - If you want to route the queries to the least loaded backend for a user
 i.e. backend with the least number of queries running or queued from a particular user,
-then use `QueryCountBasedRouter`, it can be configured by adding the module name 
-to config file's modules section like below
+set `routingStrategy` to `QueryCountBasedRouting`.
 
 ```
+routingStrategy: QueryCountBasedRouting
 ```
+
 - The router works on the stats it receives from the clusters about the load i.e number queries queued and running on a cluster at regular intervals which can be configured like below. The default interval is 1 min
 ```
 monitor:
+  monitorType: UI_API
   taskDelaySeconds: 10
 ```
