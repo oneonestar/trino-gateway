@@ -31,7 +31,7 @@ will route `/` to Trino.
 ## Change of configuration
 ### Change of service ports
 `requestRouter`, `server`, `applicationConnectors`, and `adminConnectors`
-have been replaced by `httpConfig`.
+have been replaced by `serverConfig`.
 
 Old config:
 ```yaml
@@ -53,7 +53,7 @@ server:
 
 New config:
 ```yaml
-httpConfig:
+serverConfig:
     node.environment: test
     http-server.http.port: 8443
     proxy.http-client.request-buffer-size: 8kB
@@ -90,7 +90,7 @@ server:
 
 New config:
 ```yaml
-httpConfig:
+serverConfig:
     http-server.http.enabled: false
     http-server.https.enabled: true
     http-server.https.port: 8080
@@ -113,7 +113,7 @@ New config:
 
 * Specify the path to the `log.properties` file in config
 ```yaml
-httpConfig:
+serverConfig:
     log.levels-file: gateway-ha/etc/log.properties
 ```
 *  The `log.levels-file` JVM option is no longer supported.
