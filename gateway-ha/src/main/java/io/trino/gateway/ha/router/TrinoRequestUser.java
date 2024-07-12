@@ -40,6 +40,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static com.nimbusds.openid.connect.sdk.UserInfoResponse.parse;
+import static java.util.Objects.requireNonNull;
 
 public class TrinoRequestUser
 {
@@ -50,33 +51,14 @@ public class TrinoRequestUser
     private Optional<String> user = Optional.empty();
     private Optional<UserInfo> userInfo = Optional.empty();
 
-    private static Optional<URI> oauthUserInfoUrl = Optional.empty();
     private static final Logger log = Logger.get(TrinoRequestUser.class);
 
-    private static final LoadingCache<String, UserInfo> userInfoCache =
-            CacheBuilder.newBuilder()
-                    .maximumSize(10000)
-                    .expireAfterAccess(10, TimeUnit.MINUTES)
-                    .build(CacheLoader.from(TrinoRequestUser::getUserInfo));
+    private final Optional<LoadingCache<String, UserInfo>> userInfoCache;
 
-    public TrinoRequestUser(HttpServletRequest request, RequestAnalyzerConfig config)
+    public TrinoRequestUser(HttpServletRequest request, String userField, Optional<LoadingCache<String, UserInfo>> userInfoCache)
     {
-        if (oauthUserInfoUrl.isEmpty() && config.getOauthTokenInfoUrl() != null) {
-            setOauthUserInfoUrl(config.getOauthTokenInfoUrl());
-        }
-        user = extractUser(request, config.getTokenUserField());
-    }
-
-    // Thread safety may not be needed here since config is global, however it should be
-    // cheap, and this ensures safety against future changes
-    private static synchronized void setOauthUserInfoUrl(String oauthTokenInfoUrl)
-    {
-        try {
-            oauthUserInfoUrl = Optional.of(URI.create(oauthTokenInfoUrl));
-        }
-        catch (IllegalArgumentException e) {
-            log.error(e, "Invalid oauthUserInfoUrl");
-        }
+        this.userInfoCache = requireNonNull(userInfoCache);
+        user = extractUser(request, userField);
     }
 
     @SuppressWarnings("unused")
@@ -182,9 +164,9 @@ public class TrinoRequestUser
             }
         }
 
-        if (oauthUserInfoUrl.isPresent()) {
+        if (userInfoCache.isPresent()) {
             try {
-                userInfo = Optional.of(userInfoCache.get(token));
+                userInfo = Optional.of(userInfoCache.orElseThrow().get(token));
                 return Optional.of(userInfo.orElseThrow().getSubject().toString());
             }
             catch (ExecutionException e) {
@@ -194,23 +176,51 @@ public class TrinoRequestUser
         return Optional.empty();
     }
 
-    private static UserInfo getUserInfo(String token)
+    public static class TrinoRequestUserProvider
     {
-        Request nimbusRequest = new UserInfoRequest(oauthUserInfoUrl.orElseThrow(), new BearerAccessToken(token));
-        try {
-            UserInfoResponse userInfoResponse = parse(nimbusRequest.toHTTPRequest().send());
-            if (!userInfoResponse.indicatesSuccess()) {
-                log.error("Received bad response from userinfo endpoint: %s", userInfoResponse.toErrorResponse().getErrorObject());
-                return null;
+        private final String userField;
+        private final Optional<URI> oauthUserInfoUrl;
+        private final Optional<LoadingCache<String, UserInfo>> userInfoCache;
+
+        public TrinoRequestUserProvider(RequestAnalyzerConfig config)
+        {
+            userField = config.getTokenUserField();
+            if (config.getOauthTokenInfoUrl() != null) {
+                oauthUserInfoUrl = Optional.of(URI.create(config.getOauthTokenInfoUrl()));
+                userInfoCache = Optional.of(CacheBuilder.newBuilder()
+                        .maximumSize(10000)
+                        .expireAfterAccess(10, TimeUnit.MINUTES)
+                        .build(CacheLoader.from(this::getUserInfo)));
             }
-            return userInfoResponse.toSuccessResponse().getUserInfo();
+            else {
+                oauthUserInfoUrl = Optional.empty();
+                userInfoCache = Optional.empty();
+            }
         }
-        catch (IOException ex) {
-            log.debug("Call to access token endpoint failed: %s", ex.getMessage());
+
+        public TrinoRequestUser getInstance(HttpServletRequest request)
+        {
+            return new TrinoRequestUser(request, userField, userInfoCache);
         }
-        catch (ParseException e) {
-            throw new RuntimeException(e);
+
+        private UserInfo getUserInfo(String token)
+        {
+            Request nimbusRequest = new UserInfoRequest(oauthUserInfoUrl.orElseThrow(), new BearerAccessToken(token));
+            try {
+                UserInfoResponse userInfoResponse = parse(nimbusRequest.toHTTPRequest().send());
+                if (!userInfoResponse.indicatesSuccess()) {
+                    log.error("Received bad response from userinfo endpoint: %s", userInfoResponse.toErrorResponse().getErrorObject());
+                    return null;
+                }
+                return userInfoResponse.toSuccessResponse().getUserInfo();
+            }
+            catch (IOException ex) {
+                log.debug("Call to access token endpoint failed: %s", ex.getMessage());
+            }
+            catch (ParseException e) {
+                throw new RuntimeException(e);
+            }
+            return null;
         }
-        return null;
     }
 }

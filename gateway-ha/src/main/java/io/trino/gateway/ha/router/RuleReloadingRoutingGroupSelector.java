@@ -45,11 +45,13 @@ public class RuleReloadingRoutingGroupSelector
     private volatile long lastUpdatedTime;
     private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock(true);
     private final RequestAnalyzerConfig requestAnalyzerConfig;
+    private final TrinoRequestUser.TrinoRequestUserProvider trinoRequestUserProvider;
 
     RuleReloadingRoutingGroupSelector(String rulesConfigPath, RequestAnalyzerConfig requestAnalyzerConfig)
     {
         this.rulesConfigPath = rulesConfigPath;
         this.requestAnalyzerConfig = requestAnalyzerConfig;
+        trinoRequestUserProvider = new TrinoRequestUser.TrinoRequestUserProvider(requestAnalyzerConfig);
         try {
             rules = ruleFactory.createRules(
                     new FileReader(rulesConfigPath, UTF_8));
@@ -94,7 +96,7 @@ public class RuleReloadingRoutingGroupSelector
             facts.put("request", request);
             if (requestAnalyzerConfig.isAnalyzeRequest()) {
                 TrinoQueryProperties trinoQueryProperties = new TrinoQueryProperties(request, requestAnalyzerConfig);
-                TrinoRequestUser trinoRequestUser = new TrinoRequestUser(request, requestAnalyzerConfig);
+                TrinoRequestUser trinoRequestUser = trinoRequestUserProvider.getInstance(request);
                 facts.put("trinoQueryProperties", trinoQueryProperties);
                 facts.put("trinoRequestUser", trinoRequestUser);
             }
